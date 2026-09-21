@@ -42,8 +42,6 @@ VOICE_CHANNEL_ID=<optional channel id to pin 24/7>
 AUTO_JOIN=true
 LEAVE_WHEN_EMPTY=false
 GREETING=Welcome, {name}!
-TTS_PROVIDER=edge
-TTS_VOICE=en-PH-RosaNeural
 ```
 The code reads `process.env`, so no `.env` file is required. (`dotenv` only fills in keys that are missing.)
 

@@ -16,9 +16,7 @@ const {
   entersState,
   StreamType,
 } = require("@discordjs/voice");
-const os = require("os");
 const { getAudioBase64 } = require("google-tts-api");
-const { EdgeTTS } = require("node-edge-tts");
 
 const token = process.env.DISCORD_TOKEN;
 const pinnedChannelId = process.env.VOICE_CHANNEL_ID || null;
@@ -26,14 +24,8 @@ const autoJoin = (process.env.AUTO_JOIN || "true").toLowerCase() !== "false";
 const leaveWhenEmpty = (process.env.LEAVE_WHEN_EMPTY || "false").toLowerCase() === "true";
 const greetingTemplate = process.env.GREETING || "Welcome, {name}!";
 const lang = process.env.TTS_LANG || "en";
-const ttsProvider = (process.env.TTS_PROVIDER || "edge").toLowerCase();
-const ttsVoice = process.env.TTS_VOICE || "en-PH-RosaNeural";
-const ttsRate = process.env.TTS_RATE || "+0%";
-const ttsPitch = process.env.TTS_PITCH || "+0Hz";
-const ttsVolume = process.env.TTS_VOLUME || "+0%";
 
 console.log(`[config] env: DISCORD_TOKEN=${token ? "set" : "MISSING"} VOICE_CHANNEL_ID=${pinnedChannelId ? "set" : "none"} AUTO_JOIN=${autoJoin} LEAVE_WHEN_EMPTY=${leaveWhenEmpty}`);
-console.log(`[config] tts: provider=${ttsProvider} voice=${ttsVoice} rate=${ttsRate} pitch=${ttsPitch}`);
 
 if (!token) {
   console.error("Missing DISCORD_TOKEN. Set it as an environment variable (Railway -> Variables) or in a local .env file.");
@@ -109,73 +101,9 @@ async function registerCommands(guild) {
   }
 }
 
-async function renderEdge(text) {
-  const tts = new EdgeTTS({
-    voice: ttsVoice,
-    lang: ttsVoice.split("-").slice(0, 2).join("-"),
-    outputFormat: "audio-24khz-96kbitrate-mono-mp3",
-    rate: ttsRate,
-    pitch: ttsPitch,
-    volume: ttsVolume,
-    timeout: 15000,
-  });
-  const file = path.join(os.tmpdir(), `hermes-tts-${Date.now()}-${Math.random().toString(36).slice(2)}.mp3`);
-  try {
-    await tts.ttsPromise(text, file);
-    const buffer = await fs.promises.readFile(file);
-    if (!buffer.length) throw new Error("empty audio");
-    return buffer;
-  } finally {
-    fs.promises.unlink(file).catch(() => {});
-  }
-}
-
-async function renderGoogle(text) {
+async function renderSpeech(text) {
   const base64 = await getAudioBase64(text, { lang, slow: false, timeout: 10000 });
   return Buffer.from(base64, "base64");
-}
-
-async function renderOpenAI(text) {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OPENAI_API_KEY not set");
-  const res = await fetch("https://api.openai.com/v1/audio/speech", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: process.env.OPENAI_TTS_MODEL || "gpt-4o-mini-tts",
-      voice: process.env.OPENAI_TTS_VOICE || "coral",
-      input: text,
-      response_format: "mp3",
-    }),
-  });
-  if (!res.ok) throw new Error(`openai tts HTTP ${res.status}`);
-  return Buffer.from(await res.arrayBuffer());
-}
-
-async function renderElevenLabs(text) {
-  const key = process.env.ELEVENLABS_API_KEY;
-  if (!key) throw new Error("ELEVENLABS_API_KEY not set");
-  const voiceId = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
-  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
-    method: "POST",
-    headers: { "xi-api-key": key, "Content-Type": "application/json" },
-    body: JSON.stringify({ text, model_id: process.env.ELEVENLABS_MODEL || "eleven_flash_v2_5" }),
-  });
-  if (!res.ok) throw new Error(`elevenlabs tts HTTP ${res.status}`);
-  return Buffer.from(await res.arrayBuffer());
-}
-
-async function renderSpeech(text) {
-  const providers = { edge: renderEdge, openai: renderOpenAI, elevenlabs: renderElevenLabs };
-  const primary = providers[ttsProvider];
-  if (primary) {
-    try {
-      return await primary(text);
-    } catch (err) {
-      console.error(`[tts] ${ttsProvider} failed (${err.message}); falling back to google`);
-    }
-  }
-  return renderGoogle(text);
 }
 
 async function playNext(session) {
