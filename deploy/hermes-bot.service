@@ -1,0 +1,20 @@
+[Unit]
+Description=Hermes Discord Voice Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hermes
+Group=hermes
+WorkingDirectory=/opt/hermes-bot
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/env node src/index.js
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/hermes-bot.log
+StandardError=append:/var/log/hermes-bot.err.log
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
