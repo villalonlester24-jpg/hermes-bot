@@ -25,8 +25,10 @@ const leaveWhenEmpty = (process.env.LEAVE_WHEN_EMPTY || "false").toLowerCase() =
 const greetingTemplate = process.env.GREETING || "Welcome, {name}!";
 const lang = process.env.TTS_LANG || "en";
 
+console.log(`[config] env: DISCORD_TOKEN=${token ? "set" : "MISSING"} VOICE_CHANNEL_ID=${pinnedChannelId ? "set" : "none"} AUTO_JOIN=${autoJoin} LEAVE_WHEN_EMPTY=${leaveWhenEmpty}`);
+
 if (!token) {
-  console.error("Missing DISCORD_TOKEN in your .env file.");
+  console.error("Missing DISCORD_TOKEN. Set it as an environment variable (Railway -> Variables) or in a local .env file.");
   process.exit(1);
 }
 
